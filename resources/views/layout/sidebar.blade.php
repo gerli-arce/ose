@@ -21,11 +21,14 @@
                         <div class="mobile-back text-end"><span>Back</span><i class="fa fa-angle-right ps-2"
                                 aria-hidden="true"></i></div>
                     </li>
+                    
+                    {{-- SECCIÓN FUNCIONAL --}}
                     <li class="sidebar-main-title">
                         <div>
-                            <h4 class="lan-1">General </h4>
+                            <h4 class="lan-1">ADMINISTRACION FCT</h4>
                         </div>
                     </li>
+
                     <li class="sidebar-list"> <a class="sidebar-link sidebar-title" href="javascript:void(0)"><i
                                 data-feather="home"></i><span class="lan-3">Dashboard</span><span
                                 class="badge badge-primary">2</span></a>
@@ -34,6 +37,79 @@
                             <li><a class="lan-5" href="{{ route('ecommerce_dashboard') }}">Ecommerce</a></li>
                         </ul>
                     </li>
+
+                    <li class="sidebar-list"><a class="sidebar-link sidebar-title" href="javascript:void(0)"><i
+                                data-feather="users"></i><span>Administración</span></a>
+                        <ul class="sidebar-submenu">
+                            <li><a href="{{ route('users.index') }}">Usuarios</a></li>
+                            <li><a href="{{ route('roles.index') }}">Roles y Permisos</a></li>
+                            <li><a href="{{ route('branches.index') }}">Sucursales</a></li>
+                            <li><a href="{{ route('contacts.index') }}">Clientes y Proveedores</a></li>
+                            <li><a href="{{ route('settings.company.index') }}">Config. Empresa</a></li>
+                        </ul>
+                    </li>
+
+                    <li class="sidebar-list"><a class="sidebar-link sidebar-title" href="javascript:void(0)"><i
+                                data-feather="box"></i><span>Inventario</span></a>
+                        <ul class="sidebar-submenu">
+                            <li><a href="{{ route('categories.index') }}">Categorías</a></li>
+                            <li><a href="{{ route('warehouses.index') }}">Almacenes</a></li>
+                            <li><a href="{{ route('products.index') }}">Productos</a></li>
+                            <li><a href="{{ route('movements.index') }}">Kardex / Movimientos</a></li>
+                        </ul>
+                    </li>
+
+                    <li class="sidebar-list"><a class="sidebar-link sidebar-title" href="javascript:void(0)"><i
+                                data-feather="dollar-sign"></i><span>Ventas</span></a>
+                        <ul class="sidebar-submenu">
+                            <li><a href="{{ route('series.index') }}">Series y Foliación</a></li>
+                            <li><a href="{{ route('sales.documents.index') }}">Facturación</a></li>
+                        </ul>
+                    </li>
+
+                    <li class="sidebar-list"><a class="sidebar-link sidebar-title" href="javascript:void(0)"><i
+                                data-feather="shopping-bag"></i><span>Compras & Gastos</span></a>
+                        <ul class="sidebar-submenu">
+                            <li><a href="{{ route('purchases.documents.index') }}">Listado de Compras</a></li>
+                            <li><a href="{{ route('purchases.documents.create') }}">Registrar Compra</a></li>
+                        </ul>
+                    </li>
+
+                     <li class="sidebar-list"><a class="sidebar-link sidebar-title" href="javascript:void(0)"><i
+                                data-feather="credit-card"></i><span>Caja & Bancos</span></a>
+                        <ul class="sidebar-submenu">
+                            <li><a href="{{ route('cash.index') }}">Cajas (POS)</a></li>
+                            <li><a href="{{ route('banks.index') }}">Cuentas Bancarias</a></li>
+                        </ul>
+                    </li>
+
+                     <li class="sidebar-list"><a class="sidebar-link sidebar-title" href="javascript:void(0)"><i
+                                data-feather="bar-chart"></i><span>Reportes</span></a>
+                        <ul class="sidebar-submenu">
+                            <li><a href="{{ route('reports.sales') }}">Reporte de Ventas</a></li>
+                            <li><a href="{{ route('reports.products') }}">Reporte de Productos</a></li>
+                            <li><a href="{{ route('reports.customers') }}">Reporte de Clientes</a></li>
+                            <li><a href="{{ route('reports.taxes') }}">Reporte de Impuestos</a></li>
+                             <li><a href="{{ route('reports.receivables') }}">Cuentas por Cobrar</a></li>
+                            <li><a href="{{ route('reports.payables') }}">Cuentas por Pagar</a></li>
+                        </ul>
+                    </li>
+
+                    <li class="sidebar-list"><a class="sidebar-link sidebar-title" href="javascript:void(0)"><i
+                                data-feather="cpu"></i><span>Admin SaaS</span></a>
+                        <ul class="sidebar-submenu">
+                            <li><a href="{{ route('saas.tenants') }}">Empresas</a></li>
+                            <li><a href="{{ route('saas.plans.index') }}">Planes</a></li>
+                        </ul>
+                    </li>
+
+                    {{-- SECCIÓN TEMPLATE --}}
+                    <li class="sidebar-main-title">
+                        <div>
+                            <h4>TEMPLATE / GENERAL</h4>
+                        </div>
+                    </li>
+
                     <li class="sidebar-list"><a class="sidebar-link sidebar-title" href="javascript:void(0)"><i
                                 data-feather="airplay"></i><span class="lan-6">Widgets</span></a>
                         <ul class="sidebar-submenu">
@@ -54,88 +130,7 @@
                             <li><a href="{{ route('footer-fixed') }}">Footer Fixed</a></li>
                         </ul>
                     </li>
-                    <li class="sidebar-main-title">
-                        <div>
-                            <h4 class="lan-8">Applications </h4>
-                        </div>
-                    </li>
-                    <li class="sidebar-list"> <a class="sidebar-link sidebar-title" href="javascript:void(0)"><i
-                                data-feather="box"></i><span>Project </span></a>
-                        <ul class="sidebar-submenu">
-                            <li><a href="{{ route('projects') }}">Project List</a></li>
-                            <li><a href="{{ route('projectcreate') }}">Create new</a></li>
-                        </ul>
-                    </li>
-                    <li class="sidebar-list"><a class="sidebar-link sidebar-title link-nav"
-                            href="{{ route('file_manager') }}"><i data-feather="git-pull-request"> </i><span>File
-                                manager</span></a></li>
-                    <li class="sidebar-list"> <a class="sidebar-link sidebar-title link-nav"
-                            href="{{ route('kanban') }}"><i data-feather="monitor"> </i><span>kanban Board</span></a>
-                    </li>
-                    <li class="sidebar-list"><a class="sidebar-link sidebar-title" href="javascript:void(0)"><i
-                                data-feather="shopping-bag"></i><span>Ecommerce</span></a>
-                        <ul class="sidebar-submenu">
-                            <li><a href="{{ route('product') }}">Product</a></li>
-                            <li><a href="{{ route('page-product') }}">Product page</a></li>
-                            <li><a href="{{ route('add_product') }}">Add Product</a></li>
-                            <li><a href="{{ route('list-products') }}">Product list</a></li>
-                            <li><a href="{{ route('payment-details') }}">Payment Details</a></li>
-                            <li><a href="{{ route('order-history') }}">Order History</a></li>
-                            <li><a href="{{ route('invoice-template') }}">Invoice</a></li>
-                            <li><a href="{{ route('cart') }}">Cart</a></li>
-                            <li><a href="{{ route('list-wish') }}">Wishlist</a></li>
-                            <li><a href="{{ route('checkout') }}">Checkout</a></li>
-                            <li><a href="{{ route('pricing') }}">Pricing </a></li>
-                        </ul>
-                    </li>
-                    <li class="sidebar-list"><a class="sidebar-link sidebar-title" href="javascript:void(0)"><i
-                                data-feather="mail"></i><span>Email</span></a>
-                        <ul class="sidebar-submenu">
-                            <li><a href="{{ route('email_inbox') }}">Mail Inbox</a></li>
-                            <li><a href="{{ route('email_read') }}">Read mail</a></li>
-                            <li><a href="{{ route('email_compose') }}">Compose</a></li>
-                        </ul>
-                    </li>
-                    <li class="sidebar-list"><a class="sidebar-link sidebar-title" href="javascript:void(0)"><i
-                                data-feather="message-circle"></i><span>Chat</span></a>
-                        <ul class="sidebar-submenu">
-                            <li><a href="{{ route('chat') }}">Chat App</a></li>
-                            <li><a href="{{ route('video_chat') }}">Video chat</a></li>
-                        </ul>
-                    </li>
-                    <li class="sidebar-list"><a class="sidebar-link sidebar-title" href="javascript:void(0)"><i
-                                data-feather="users"></i><span>Users</span></a>
-                        <ul class="sidebar-submenu">
-                            <li><a href="{{ route('user-profile') }}">Users Profile</a></li>
-                            <li><a href="{{ route('edit-profile') }}">Users Edit</a></li>
-                            <li><a href="{{ route('user-cards') }}">Users Cards</a></li>
-                        </ul>
-                    </li>
-                    <li class="sidebar-list"><a class="sidebar-link sidebar-title link-nav"
-                            href="{{ route('bookmark') }}"><i data-feather="heart"> </i><span>Bookmarks</span></a>
-                    </li>
-                    <li class="sidebar-list"><a class="sidebar-link sidebar-title link-nav"
-                            href="{{ route('contacts') }}"><i data-feather="list"> </i><span>Contacts</span></a>
-                    </li>
-                    <li class="sidebar-list"><a class="sidebar-link sidebar-title link-nav"
-                            href="{{ route('task') }}"><i data-feather="check-square"> </i><span>Tasks</span></a>
-                    </li>
-                    <li class="sidebar-list"><a class="sidebar-link sidebar-title link-nav"
-                            href="{{ route('calendar_basic') }}"><i data-feather="calendar">
-                            </i><span>Calendar</span></a></li>
-                    <li class="sidebar-list"><a class="sidebar-link sidebar-title link-nav"
-                            href="{{ route('social_app') }}"><i data-feather="zap"> </i><span>Social App</span></a>
-                    </li>
-                    <li class="sidebar-list"><a class="sidebar-link sidebar-title link-nav"
-                            href="{{ route('to_do') }}"><i data-feather="clock"> </i><span>To-Do</span></a></li>
-                    <li class="sidebar-list"><a class="sidebar-link sidebar-title link-nav"
-                            href="{{ route('search') }}"><i data-feather="search"> </i><span>Search
-                                Result</span></a></li>
-                    <li class="sidebar-main-title">
-                        <div>
-                            <h4>Forms & Table </h4>
-                        </div>
-                    </li>
+
                     <li class="sidebar-list"><a class="sidebar-link sidebar-title" href="javascript:void(0)"><i
                                 data-feather="file-text"></i><span>Forms</span></a>
                         <ul class="sidebar-submenu">
@@ -198,11 +193,7 @@
                             <li><a href="{{ route('js_grid_table') }}">Js Grid Table </a></li>
                         </ul>
                     </li>
-                    <li class="sidebar-main-title">
-                        <div>
-                            <h4>Components</h4>
-                        </div>
-                    </li>
+                    
                     <li class="sidebar-list"><a class="sidebar-link sidebar-title" href="javascript:void(0)"><i
                                 data-feather="box"></i><span>Ui Kits</span></a>
                         <ul class="sidebar-submenu">
@@ -413,11 +404,6 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </li>
-                    <li class="sidebar-main-title">
-                        <div>
-                            <h4>Miscellaneous </h4>
                         </div>
                     </li>
                     <li class="sidebar-list"><a class="sidebar-link sidebar-title" href="javascript:void(0)"><i

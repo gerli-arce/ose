@@ -13,6 +13,16 @@
 </head>
 
 <body class="preload">
+    <script>
+        (function() {
+            try {
+                var bodyMode = localStorage.getItem("body");
+                if (bodyMode === "dark-only") {
+                    document.body.classList.add("dark-only");
+                }
+            } catch (e) {}
+        })();
+    </script>
     <!-- tap on top starts-->
     <div class="tap-top"><i data-feather="chevrons-up"></i></div>
     <!-- tap on tap ends-->

@@ -191,7 +191,11 @@
     $(".mode i").toggleClass("fa-moon-o").toggleClass("fa-lightbulb-o");
     $("body").toggleClass("dark-only");
     var color = $(this).attr("data-attr");
-    localStorage.setItem("body", "dark-only");
+    if($("body").hasClass("dark-only")){
+      localStorage.setItem("body", "dark-only");
+    } else {
+      localStorage.removeItem("body");
+    }
   });
 
   // Language

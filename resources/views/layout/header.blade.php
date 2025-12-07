@@ -11,8 +11,16 @@
           </div>
         </div>
       </form>
-      <div class="header-logo-wrapper col-auto p-0">
-        <div class="logo-wrapper"><a href="{{ route('dashboard') }}"><img class="img-fluid for-light" src="{{ asset('assets/images/logo/logo.png') }}" alt=""><img class="img-fluid for-dark" src="{{ asset('assets/images/logo/logo-dark.png') }}" alt=""></a></div>
+        <div class="header-logo-wrapper col-auto p-0">
+        @php
+            $companyId = session('current_company_id');
+            $logoPath = null;
+            if ($companyId) {
+                $compConfig = \App\Models\Company::find($companyId)->config_json;
+                $logoPath = $compConfig['logo_path'] ?? null;
+            }
+        @endphp
+        <div class="logo-wrapper"><a href="{{ route('dashboard') }}"><img class="img-fluid for-light" src="{{ $logoPath ? asset($logoPath) : asset('assets/images/logo/logo.png') }}" alt="" style="max-height: 50px;"><img class="img-fluid for-dark" src="{{ $logoPath ? asset($logoPath) : asset('assets/images/logo/logo-dark.png') }}" alt="" style="max-height: 50px;"></a></div>
         <div class="toggle-sidebar"><i class="status_toggle middle sidebar-toggle" data-feather="align-center"></i></div>
       </div>
       <div class="left-header col horizontal-wrapper ps-0">
@@ -134,15 +142,28 @@
           <li class="maximize"><a class="text-dark" href="#!" onclick="javascript:toggleFullScreen()"><i data-feather="maximize"></i></a></li>
           <li class="profile-nav onhover-dropdown p-0 me-0">
             <div class="d-flex profile-media"><img class="b-r-50" src="{{ asset('assets/images/dashboard/profile.png') }}" alt="">
-              <div class="flex-grow-1"><span>Helen Walter</span>
-                <p class="mb-0 font-roboto">Admin <i class="middle fa fa-angle-down"></i></p>
+              <div class="flex-grow-1"><span>{{ Auth::user()->name }}</span>
+                @php
+                    $companyId = session('current_company_id');
+                    $branchId = session('current_branch_id');
+                    $companyName = $companyId ? \App\Models\Company::find($companyId)->name : 'Sin Empresa';
+                    $branchName = $branchId ? \App\Models\Branch::find($branchId)->name : 'Sin Sucursal';
+                @endphp
+                <p class="mb-0 font-roboto">{{ $companyName }} <br> <small>{{ $branchName }}</small> <i class="middle fa fa-angle-down"></i></p>
               </div>
             </div>
             <ul class="profile-dropdown onhover-show-div">
-              <li><a href="{{ route('user-profile')}}"><i data-feather="user"></i><span>Account </span></a></li>
-              <li><a href="{{ route('email_inbox')}}"><i data-feather="mail"></i><span>Inbox</span></a></li>
-              <li><a href="{{ route('kanban')}}"><i data-feather="file-text"></i><span>Taskboard</span></a></li>
-              <li><a href="{{ route('login')}}"><i data-feather="log-in"> </i><span>Log in</span></a></li>
+              <li><a href="{{ route('select.company') }}"><i data-feather="repeat"></i><span>Cambiar Empresa</span></a></li>
+              <li><a href="{{ route('select.branch') }}"><i data-feather="navigation"></i><span>Cambiar Súc.</span></a></li>
+              <li><a href="{{ route('user-profile')}}"><i data-feather="user"></i><span>Perfil</span></a></li>
+              <li>
+                <a href="{{ route('logout') }}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                  <i data-feather="log-out"> </i><span>Salir</span>
+                </a>
+                <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
+                    @csrf
+                </form>
+              </li>
             </ul>
           </li>
         </ul>

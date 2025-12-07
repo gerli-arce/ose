@@ -25,6 +25,11 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
-        //
+        \Illuminate\Support\Facades\Gate::before(function ($user, $ability) {
+            if ($user->is_super_admin) {
+                return true;
+            }
+            return $user->hasPermissionTo($ability);
+        });
     }
 }
