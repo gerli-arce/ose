@@ -70,7 +70,18 @@
                                 @forelse($products as $product)
                                 <tr>
                                     <td>
-                                        <img src="{{ $product->image_path ? asset($product->image_path) : asset('assets/images/product/1.png') }}" alt="" class="img-fluid" style="width: 40px; height: 40px; object-fit: cover;">
+                                        <div style="width: 40px; height: 40px;" class="d-flex align-items-center justify-content-center bg-light rounded">
+                                            @if($product->image_path)
+                                                <img src="{{ Str::startsWith($product->image_path, 'storage/') ? asset($product->image_path) : asset('storage/' . $product->image_path) }}?v={{ time() }}" 
+                                                     alt="" 
+                                                     class="img-fluid rounded" 
+                                                     style="width: 100%; height: 100%; object-fit: cover;"
+                                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                                <i class="fa fa-cube text-muted" style="display: none;"></i>
+                                            @else
+                                                <i class="fa fa-cube text-muted"></i>
+                                            @endif
+                                        </div>
                                     </td>
                                     <td>{{ $product->code }}</td>
                                     <td>

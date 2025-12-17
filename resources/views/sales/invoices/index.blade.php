@@ -82,11 +82,12 @@
                                         @endif
                                     </td>
                                     <td>
-                                         @if($doc->eDocument)
-                                            @if($doc->eDocument->response_status == 'accepted') <span class="badge bg-success">Aceptado</span>
-                                            @elseif($doc->eDocument->response_status == 'rejected') <span class="badge bg-danger">Rechazado</span>
-                                            @else <span class="badge bg-secondary">Pendiente</span>
-                                            @endif
+                                         @if($doc->sunat_status === 'accepted')
+                                            <span class="badge bg-success">SUNAT Aceptado</span>
+                                         @elseif($doc->sunat_status === 'rejected')
+                                            <span class="badge bg-danger">SUNAT Rechazado</span>
+                                         @elseif($doc->sunat_status === 'pending')
+                                            <span class="badge bg-secondary">SUNAT Pendiente</span>
                                          @else
                                             <span class="text-muted">-</span>
                                          @endif

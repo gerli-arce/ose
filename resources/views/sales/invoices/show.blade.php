@@ -29,9 +29,9 @@
                     <div class="row mb-4">
                         <div class="col-sm-6">
                             <h6 class="mb-3">De:</h6>
-                            <div><strong>{{ $document->company->firm_name }}</strong></div>
-                            <div>{{ $document->company->address }}</div>
-                            <div>RUC: {{ $document->company->ruc }}</div>
+                            <div><strong>{{ $document->company->name ?? 'Empresa' }}</strong></div>
+                            <div>{{ $document->company->address ?? '' }}</div>
+                            <div>RUC: {{ $document->company->tax_id ?? '' }}</div>
                         </div>
                         <div class="col-sm-6 text-end">
                             <h6 class="mb-3">Para:</h6>
@@ -83,7 +83,7 @@
                                  </tr>
                                  <tr>
                                      <td>IGV:</td>
-                                     <td>{{ number_format($document->total_igv, 2) }}</td>
+                                     <td>{{ number_format($document->tax_total, 2) }}</td>
                                  </tr>
                                  <tr>
                                      <td><strong>Total:</strong></td>
@@ -103,16 +103,32 @@
                     <h5>Facturación Electrónica</h5>
                 </div>
                 <div class="card-body">
-                     @if($document->eDocument)
-                        <div class="alert {{ $document->eDocument->response_status == 'accepted' ? 'alert-success' : 'alert-warning' }}">
-                            {{ strtoupper($document->eDocument->response_status) }}
-                        </div>
-                        @if($document->eDocument->response_status != 'accepted')
-                        <a href="{{ route('edocs.send', $document->eDocument->id) }}" class="btn btn-primary w-100 mb-2">Enviar a SUNAT</a>
-                        @endif
+                     @if($document->sunat_status === 'accepted')
+                        <div class="alert alert-success mb-2">SUNAT Aceptado</div>
+                     @elseif($document->sunat_status === 'rejected')
+                        <div class="alert alert-danger mb-2">SUNAT Rechazado</div>
                      @else
-                        <div class="alert alert-secondary">No generado</div>
+                        <div class="alert alert-secondary mb-2">SUNAT Pendiente</div>
                      @endif
+
+                     @if($document->eDocument)
+                        <div class="mb-2 small">
+                            <div><strong>Código:</strong> {{ $document->eDocument->response_code ?? '-' }}</div>
+                            <div><strong>Mensaje:</strong> {{ $document->eDocument->response_message ?? '-' }}</div>
+                            <div><strong>Hash:</strong> {{ $document->eDocument->hash ?? '-' }}</div>
+                            @if($document->eDocument->cdr_path)
+                                <div><a href="{{ route('files.download', ['path' => $document->eDocument->cdr_path]) }}" class="text-primary">Descargar CDR</a></div>
+                            @endif
+                            @if($document->eDocument->xml_path)
+                                <div><a href="{{ route('files.download', ['path' => $document->eDocument->xml_path]) }}" class="text-primary">Descargar XML</a></div>
+                            @endif
+                        </div>
+                     @endif
+
+                     <form action="{{ route('sales.documents.resend.sunat', $document->id) }}" method="POST" class="d-grid gap-2">
+                         @csrf
+                         <button type="submit" class="btn btn-primary">Reenviar a SUNAT</button>
+                     </form>
                 </div>
             </div>
 
@@ -129,11 +145,125 @@
                      @endif
                 </div>
             </div>
+
+            {{-- Notas de Crédito --}}
+            @if(in_array($document->documentType?->code ?? '', ['01', '03']))
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h6 class="mb-0"><i class="fa fa-file-invoice me-1"></i> Notas de Crédito</h6>
+                </div>
+                <div class="card-body">
+                    @if($document->creditNotes && $document->creditNotes->count() > 0)
+                        <ul class="list-group list-group-flush mb-3">
+                            @foreach($document->creditNotes as $nc)
+                            <li class="list-group-item d-flex justify-content-between px-0">
+                                <a href="{{ route('sales.credit-notes.show', $nc->id) }}">
+                                    {{ $nc->full_number }}
+                                </a>
+                                <span class="text-danger">- S/ {{ number_format($nc->total, 2) }}</span>
+                            </li>
+                            @endforeach
+                        </ul>
+                    @else
+                        <p class="text-muted small mb-3">No hay notas de crédito emitidas.</p>
+                    @endif
+                    
+                    @if($document->canIssueCreditNote())
+                        <a href="{{ route('sales.credit-notes.create', ['document_id' => $document->id]) }}" 
+                           class="btn btn-warning w-100">
+                            <i class="fa fa-plus me-1"></i> Emitir Nota de Crédito
+                        </a>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Notas de Débito --}}
+            <div class="card border-info">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0"><i class="fa fa-file-text-o me-1"></i> Notas de Débito</h6>
+                </div>
+                <div class="card-body">
+                    @if($document->debitNotes && $document->debitNotes->count() > 0)
+                        <ul class="list-group list-group-flush mb-3">
+                            @foreach($document->debitNotes as $nd)
+                            <li class="list-group-item d-flex justify-content-between px-0">
+                                <a href="{{ route('sales.debit-notes.show', $nd->id) }}">
+                                    {{ $nd->full_number }}
+                                </a>
+                                <span class="text-info">+ S/ {{ number_format($nd->total, 2) }}</span>
+                            </li>
+                            @endforeach
+                        </ul>
+                    @else
+                        <p class="text-muted small mb-3">No hay notas de débito emitidas.</p>
+                    @endif
+                    
+                    @if($document->status === 'emitted')
+                        <a href="{{ route('sales.debit-notes.create', ['document_id' => $document->id]) }}" 
+                           class="btn btn-info w-100">
+                            <i class="fa fa-plus me-1"></i> Emitir Nota de Débito
+                        </a>
+                    @endif
+                </div>
+            </div>
+            @endif
+
+            {{-- Anulación de Documento (solo para facturas emitidas) --}}
+            @if(in_array($document->documentType?->code ?? '', ['01', '07', '08']) && $document->status === 'emitted')
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h6 class="mb-0"><i class="fa fa-ban me-1"></i> Anulación</h6>
+                </div>
+                <div class="card-body">
+                    @if($document->voided_document_id)
+                        <div class="alert alert-dark mb-0">
+                            <i class="fa fa-check-circle me-1"></i>
+                            Documento anulado
+                            @if($document->voided_at)
+                                <br><small>{{ $document->voided_at->format('d/m/Y H:i') }}</small>
+                            @endif
+                        </div>
+                    @else
+                        <p class="text-muted small mb-3">
+                            Generar Comunicación de Baja para anular este documento ante SUNAT.
+                        </p>
+                        <a href="{{ route('sales.voided.create', ['document_id' => $document->id]) }}" 
+                           class="btn btn-danger w-100">
+                            <i class="fa fa-ban me-1"></i> Anular Documento
+                        </a>
+                    @endif
+                </div>
+            </div>
+            @endif
             
              <div class="card">
-                <div class="card-body">
-                    <button class="btn btn-outline-primary w-100 mb-2"><i class="fa fa-file-pdf-o"></i> Descargar PDF</button>
-                    <button class="btn btn-outline-secondary w-100"><i class="fa fa-file-code-o"></i> Descargar XML</button>
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fa fa-download me-1"></i> Descargas</h6>
+                </div>
+                <div class="card-body d-grid gap-2">
+                    <a href="{{ route('pdf.document.a4', $document->id) }}" class="btn btn-outline-primary">
+                        <i class="fa fa-file-pdf-o me-1"></i> PDF A4
+                    </a>
+                    <a href="{{ route('pdf.document.ticket', $document->id) }}" class="btn btn-outline-primary">
+                        <i class="fa fa-file-pdf-o me-1"></i> PDF Ticket (80mm)
+                    </a>
+                    <a href="{{ route('pdf.document.view', $document->id) }}" target="_blank" class="btn btn-outline-secondary">
+                        <i class="fa fa-eye me-1"></i> Ver PDF
+                    </a>
+                    @if($document->eDocument?->xml_path)
+                    <a href="{{ route('files.download', ['path' => $document->eDocument->xml_path]) }}" class="btn btn-outline-dark">
+                        <i class="fa fa-file-code-o me-1"></i> Descargar XML
+                    </a>
+                    @endif
+                    @if($document->eDocument?->cdr_path)
+                    <a href="{{ route('files.download', ['path' => $document->eDocument->cdr_path]) }}" class="btn btn-outline-success">
+                        <i class="fa fa-file-archive-o me-1"></i> Descargar CDR
+                    </a>
+                    @endif
+                    <hr>
+                    <a href="{{ route('edoc-viewer.show', $document->id) }}" class="btn btn-dark">
+                        <i class="fa fa-code me-1"></i> Visor XML/CDR
+                    </a>
                 </div>
             </div>
         </div>

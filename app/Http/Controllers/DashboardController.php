@@ -2,60 +2,183 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Company;
+use App\Models\Contact;
+use App\Models\DailySummary;
+use App\Models\DespatchAdvice;
+use App\Models\Product;
+use App\Models\SalesDocument;
+use App\Models\SalesDocumentItem;
+use App\Models\VoidedDocument;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Models\Invoice; // Assuming Invoice is the SalesDocument
-use App\Models\InvoiceItem;
-use App\Models\Product;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Schema;
 
 class DashboardController extends Controller
 {
     public function index(Request $request)
     {
         $companyId = session('current_company_id');
-        $branchId = session('current_branch_id');
-
-        // Context Filters
-        $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
-        $endDate = $request->input('end_date', Carbon::now()->format('Y-m-d'));
-
-        // Base Query
-        $salesQuery = Invoice::where('company_id', $companyId)
-            ->where('branch_id', $branchId) // Assuming branch_id exists in invoices, if not ignore
-            ->where('status', '!=', 'cancelled'); // Assuming cancelled status exists
-
-        // 1. Totals
         
-        // Sales Today
-        $salesToday = (clone $salesQuery)
-            ->whereDate('issue_date', Carbon::today())
+        if (!$companyId) {
+            return redirect()->route('company.selection');
+        }
+
+        $company = Company::find($companyId);
+
+        // ========== ESTADÍSTICAS DE VENTAS ==========
+        
+        $today = Carbon::today();
+        $startOfWeek = Carbon::now()->startOfWeek();
+        $startOfMonth = Carbon::now()->startOfMonth();
+        $startOfLastMonth = Carbon::now()->subMonth()->startOfMonth();
+        $endOfLastMonth = Carbon::now()->subMonth()->endOfMonth();
+
+        // Ventas del día
+        $salesToday = SalesDocument::where('company_id', $companyId)
+            ->whereDate('issue_date', $today)
+            ->where('status', '!=', 'cancelled')
+            ->selectRaw('COUNT(*) as count, COALESCE(SUM(total), 0) as total')
+            ->first();
+
+        // Ventas de la semana
+        $salesWeek = SalesDocument::where('company_id', $companyId)
+            ->whereBetween('issue_date', [$startOfWeek, Carbon::now()])
+            ->where('status', '!=', 'cancelled')
+            ->selectRaw('COUNT(*) as count, COALESCE(SUM(total), 0) as total')
+            ->first();
+
+        // Ventas del mes
+        $salesMonth = SalesDocument::where('company_id', $companyId)
+            ->whereBetween('issue_date', [$startOfMonth, Carbon::now()])
+            ->where('status', '!=', 'cancelled')
+            ->selectRaw('COUNT(*) as count, COALESCE(SUM(total), 0) as total')
+            ->first();
+
+        // Ventas mes anterior (para comparativa)
+        $salesLastMonth = SalesDocument::where('company_id', $companyId)
+            ->whereBetween('issue_date', [$startOfLastMonth, $endOfLastMonth])
+            ->where('status', '!=', 'cancelled')
             ->sum('total');
 
-        // Sales This Month (or filtered range)
-        $salesMonth = (clone $salesQuery)
-            ->whereBetween('issue_date', [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()])
-            ->sum('total');
-            
-        // Documents Today
-        $docsTodayCount = (clone $salesQuery)
-            ->whereDate('issue_date', Carbon::today())
-            ->count();
+        // Calcular porcentaje de cambio
+        $monthChange = 0;
+        if ($salesLastMonth > 0) {
+            $monthChange = round((($salesMonth->total - $salesLastMonth) / $salesLastMonth) * 100, 1);
+        }
 
-        // 2. Chart Data (Last 30 days or requested range)
-        $chartData = (clone $salesQuery)
-            ->select(DB::raw('DATE(issue_date) as date'), DB::raw('SUM(total) as total'))
+        // ========== GRÁFICOS ==========
+
+        // Ventas últimos 30 días
+        $salesLast30Days = SalesDocument::where('company_id', $companyId)
+            ->where('status', '!=', 'cancelled')
             ->whereBetween('issue_date', [Carbon::now()->subDays(30), Carbon::now()])
+            ->selectRaw('DATE(issue_date) as date, SUM(total) as total')
             ->groupBy('date')
-            ->orderBy('date', 'asc')
+            ->orderBy('date')
+            ->get()
+            ->keyBy('date');
+
+        // Rellenar días sin ventas
+        $chartLabels = [];
+        $chartValues = [];
+        for ($i = 29; $i >= 0; $i--) {
+            $date = Carbon::now()->subDays($i)->format('Y-m-d');
+            $chartLabels[] = Carbon::parse($date)->format('d/m');
+            $chartValues[] = $salesLast30Days->get($date)?->total ?? 0;
+        }
+
+        // Ventas por tipo de documento
+        $salesByType = SalesDocument::where('company_id', $companyId)
+            ->where('status', '!=', 'cancelled')
+            ->whereBetween('issue_date', [$startOfMonth, Carbon::now()])
+            ->join('document_types', 'document_types.id', '=', 'sales_documents.document_type_id')
+            ->selectRaw('document_types.name as type_name, document_types.code as type_code, COUNT(*) as count, SUM(sales_documents.total) as total')
+            ->groupBy('document_types.id', 'document_types.name', 'document_types.code')
             ->get();
 
-        $chartLabels = $chartData->pluck('date');
-        $chartValues = $chartData->pluck('total');
+        $typeLabels = $salesByType->pluck('type_name')->toArray();
+        $typeValues = $salesByType->pluck('total')->toArray();
+        $typeCounts = $salesByType->pluck('count')->toArray();
 
-        // 3. Top Products (By Line Item)
-        // Need to join sales_document_items with sales_documents to filter by company/branch
-        $topProducts = InvoiceItem::select(
+        // Distribución por método de pago (desde pagos)
+        $salesByPayment = DB::table('sales_payments')
+            ->join('payment_methods', 'payment_methods.id', '=', 'sales_payments.payment_method_id')
+            ->where('sales_payments.company_id', $companyId)
+            ->whereBetween('sales_payments.payment_date', [$startOfMonth, Carbon::now()])
+            ->selectRaw('payment_methods.name as method_name, SUM(sales_payments.amount) as total')
+            ->groupBy('payment_methods.id', 'payment_methods.name')
+            ->get();
+
+        // Si no hay pagos, mostrar datos vacíos o por defecto
+        if ($salesByPayment->isEmpty()) {
+            $paymentLabels = ['Sin pagos registrados'];
+            $paymentValues = [$salesMonth->total ?? 0];
+        } else {
+            $paymentLabels = $salesByPayment->pluck('method_name')->toArray();
+            $paymentValues = $salesByPayment->pluck('total')->toArray();
+        }
+
+
+        // ========== DOCUMENTOS RECIENTES ==========
+
+        $recentDocuments = SalesDocument::where('company_id', $companyId)
+            ->with(['documentType', 'customer', 'eDocument'])
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
+
+        // ========== ESTADO SUNAT ==========
+
+        // Documentos pendientes de envío
+        $pendingDocs = SalesDocument::where('company_id', $companyId)
+            ->whereDoesntHave('eDocument')
+            ->where('status', 'emitted')
+            ->count();
+
+        // Documentos rechazados
+        $rejectedDocs = SalesDocument::where('company_id', $companyId)
+            ->whereHas('eDocument', function($q) {
+                $q->where('response_status', 'rejected');
+            })
+            ->count();
+
+        // Resúmenes diarios pendientes
+        $pendingSummaries = 0;
+        try {
+            if (Schema::hasTable('daily_summaries')) {
+                $pendingSummaries = DailySummary::where('company_id', $companyId)
+                    ->whereIn('status', ['pending', 'sent'])
+                    ->count();
+            }
+        } catch (\Exception $e) {
+            $pendingSummaries = 0;
+        }
+
+        // Guías pendientes
+        $pendingDespatch = 0;
+        try {
+            if (Schema::hasTable('despatch_advices')) {
+                $pendingDespatch = DespatchAdvice::where('company_id', $companyId)
+                    ->where('sunat_status', 'pending')
+                    ->count();
+            }
+        } catch (\Exception $e) {
+            $pendingDespatch = 0;
+        }
+
+
+        // Verificar configuración SUNAT
+        $sunatConfigured = $company && 
+            $company->sunat_sol_user && 
+            $company->sunat_sol_password && 
+            $company->sunat_cert_path;
+
+        // ========== TOP PRODUCTOS ==========
+
+        $topProducts = SalesDocumentItem::select(
+                'products.id',
                 'products.name',
                 DB::raw('SUM(sales_document_items.quantity) as total_qty'),
                 DB::raw('SUM(sales_document_items.line_total) as total_amount')
@@ -63,77 +186,118 @@ class DashboardController extends Controller
             ->join('sales_documents', 'sales_documents.id', '=', 'sales_document_items.sales_document_id')
             ->join('products', 'products.id', '=', 'sales_document_items.product_id')
             ->where('sales_documents.company_id', $companyId)
-             // ->where('sales_documents.branch_id', $branchId) // Uncomment if branch column exists
             ->where('sales_documents.status', '!=', 'cancelled')
-            ->whereBetween('sales_documents.issue_date', [Carbon::now()->subDays(30), Carbon::now()])
-            ->groupBy('products.name')
+            ->whereBetween('sales_documents.issue_date', [$startOfMonth, Carbon::now()])
+            ->groupBy('products.id', 'products.name')
             ->orderByDesc('total_amount')
             ->limit(5)
             ->get();
 
-        // 4. Accounts Receivable (Pending Invoices)
-        $receivablesQuery = Invoice::where('company_id', $companyId)
-           // ->where('branch_id', $branchId)
-            ->whereIn('payment_status', ['unpaid', 'partial'])
-            ->where('status', '!=', 'cancelled');
+        // ========== TOP CLIENTES ==========
 
-        // $totalReceivable calculation removed as it was not used and caused errors.
-        // If needed later: Invoice::withSum('payments', 'allocated_amount')->get()->sum(fn($i) => $i->total - $i->payments_sum_allocated_amount);
-        // Let's assume for now we list them. 
-        // If Model logic for 'pending' is complex, we might just list unpaid ones.
-        
-        $pendingInvoices = $receivablesQuery
-            ->with('customer')
-            ->orderBy('issue_date', 'asc') // Oldest first
+        $topCustomers = SalesDocument::select(
+                'contacts.id',
+                'contacts.name',
+                'contacts.tax_id',
+                DB::raw('COUNT(*) as doc_count'),
+                DB::raw('SUM(sales_documents.total) as total_amount')
+            )
+            ->join('contacts', 'contacts.id', '=', 'sales_documents.customer_id')
+            ->where('sales_documents.company_id', $companyId)
+            ->where('sales_documents.status', '!=', 'cancelled')
+            ->whereBetween('sales_documents.issue_date', [$startOfMonth, Carbon::now()])
+            ->groupBy('contacts.id', 'contacts.name', 'contacts.tax_id')
+            ->orderByDesc('total_amount')
             ->limit(5)
             ->get();
-            
-        $overdueCount = (clone $receivablesQuery)
-            ->where('due_date', '<', Carbon::today())
-            ->count();
 
+        // ========== ALERTAS ==========
 
-        // Check if data is empty and generate dummy data for visualization if requested/needed
-        if ($salesToday == 0 && $salesMonth == 0 && $docsTodayCount == 0 && $overdueCount == 0) {
-            $salesToday = 1540.50;
-            $salesMonth = 45200.00;
-            $docsTodayCount = 12;
-            $overdueCount = 5;
-            
-            // Dummy Chart Data (Last 30 days)
-            $chartLabels = [];
-            $chartValues = [];
-            for ($i = 29; $i >= 0; $i--) {
-                $chartLabels[] = Carbon::now()->subDays($i)->format('Y-m-d');
-                $chartValues[] = rand(1000, 5000);
-            }
+        $alerts = [];
 
-            // Dummy Top Products
-            $topProducts = collect([
-                (object)['name' => 'Producto Ejemplo A', 'total_qty' => 150, 'total_amount' => 15000.00],
-                (object)['name' => 'Servicio Premium', 'total_qty' => 85, 'total_amount' => 8500.00],
-                (object)['name' => 'Licencia Anual', 'total_qty' => 40, 'total_amount' => 12000.00],
-                (object)['name' => 'Soporte Técnico', 'total_qty' => 25, 'total_amount' => 2500.00],
-                (object)['name' => 'Consultoría', 'total_qty' => 10, 'total_amount' => 5000.00],
-            ]);
+        if (!$sunatConfigured) {
+            $alerts[] = [
+                'type' => 'warning',
+                'icon' => 'fa-exclamation-triangle',
+                'message' => 'Configure las credenciales SUNAT para enviar documentos electrónicos.',
+                'action' => route('settings.sunat.index'),
+                'action_text' => 'Configurar'
+            ];
+        }
 
-            // Dummy Pending Invoices
-            $pendingInvoices = collect();
-            for($i=0; $i<5; $i++) {
-                $pendingInvoices->push((object)[
-                    'issue_date' => Carbon::now()->subDays(rand(1, 10)),
-                    'customer' => (object)['name' => 'Cliente Demo ' . ($i+1)],
-                    'total' => rand(500, 2000),
-                    'payment_status' => 'pending'
-                ]);
-            }
-        }    
+        if ($rejectedDocs > 0) {
+            $alerts[] = [
+                'type' => 'danger',
+                'icon' => 'fa-times-circle',
+                'message' => "Tiene {$rejectedDocs} documento(s) rechazado(s) por SUNAT que requieren atención.",
+                'action' => route('sales.documents.index', ['status' => 'rejected']),
+                'action_text' => 'Ver'
+            ];
+        }
 
-        return view('dashboards.default_dashboard', compact(
-            'salesToday', 'salesMonth', 'docsTodayCount',
-            'chartLabels', 'chartValues',
+        if ($pendingDocs > 0) {
+            $alerts[] = [
+                'type' => 'info',
+                'icon' => 'fa-clock-o',
+                'message' => "Tiene {$pendingDocs} documento(s) pendiente(s) de envío a SUNAT.",
+                'action' => route('sales.documents.index'),
+                'action_text' => 'Ver'
+            ];
+        }
+
+        return view('dashboards.sunat_dashboard', compact(
+            'company',
+            'salesToday',
+            'salesWeek',
+            'salesMonth',
+            'monthChange',
+            'chartLabels',
+            'chartValues',
+            'typeLabels',
+            'typeValues',
+            'typeCounts',
+            'paymentLabels',
+            'paymentValues',
+            'recentDocuments',
+            'pendingDocs',
+            'rejectedDocs',
+            'pendingSummaries',
+            'pendingDespatch',
+            'sunatConfigured',
             'topProducts',
-            'pendingInvoices', 'overdueCount'
+            'topCustomers',
+            'alerts'
         ));
+    }
+
+    /**
+     * API para obtener datos de gráficos (AJAX)
+     */
+    public function chartData(Request $request)
+    {
+        $companyId = session('current_company_id');
+        $period = $request->input('period', '30days');
+
+        $startDate = match($period) {
+            '7days' => Carbon::now()->subDays(7),
+            '30days' => Carbon::now()->subDays(30),
+            '90days' => Carbon::now()->subDays(90),
+            'year' => Carbon::now()->subYear(),
+            default => Carbon::now()->subDays(30),
+        };
+
+        $salesData = SalesDocument::where('company_id', $companyId)
+            ->where('status', '!=', 'cancelled')
+            ->whereBetween('issue_date', [$startDate, Carbon::now()])
+            ->selectRaw('DATE(issue_date) as date, SUM(total) as total, COUNT(*) as count')
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get();
+
+        return response()->json([
+            'labels' => $salesData->pluck('date')->map(fn($d) => Carbon::parse($d)->format('d/m')),
+            'values' => $salesData->pluck('total'),
+            'counts' => $salesData->pluck('count'),
+        ]);
     }
 }

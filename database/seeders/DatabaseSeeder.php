@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             AdminConorldSeeder::class,
             InventorySeeder::class,
             SalesSettingsSeeder::class,
+            SunatDemoSeeder::class,
         ]);
     }
 }

@@ -17,6 +17,7 @@ class ProductCategory extends Model
         'parent_id',
         'name',
         'code',
+        'active',
     ];
 
     public function company()

@@ -69,6 +69,12 @@
                                 @endforeach
                             </select>
                         </div>
+                        <div class="col-md-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="create_active" name="active" value="1" checked>
+                                <label class="form-check-label" for="create_active">Activo</label>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -111,6 +117,12 @@
                                 @endforeach
                             </select>
                         </div>
+                        <div class="col-md-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="edit_active" name="active" value="1">
+                                <label class="form-check-label" for="edit_active">Activo</label>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -146,6 +158,11 @@
                 { name: "name", title: "Nombre", type: "text", width: 150 },
                 { name: "code", title: "Código", type: "text", width: 100 },
                 { name: "parent_name", title: "Categoría Padre", type: "text", width: 150 },
+                { name: "active", title: "Estado", type: "select", width: 80, items: [{Name: '', Id: ''}, {Name: 'Activo', Id: true}, {Name: 'Inactivo', Id: false}], valueField: 'Id', textField: 'Name',
+                    itemTemplate: function(value) {
+                        return value ? '<span class="badge bg-success">Activo</span>' : '<span class="badge bg-danger">Inactivo</span>';
+                    }
+                },
                 { name: "products_count", title: "Productos", type: "number", width: 80, filtering: false },
                 { title: "Acciones", width: 100, sorting: false, filtering: false, itemTemplate: function(value, item) {
                     var $container = $("<div>").addClass("d-flex justify-content-center");
@@ -201,6 +218,7 @@
                     $('#edit_name').val(response.category.name);
                     $('#edit_code').val(response.category.code);
                     $('#edit_parent_id').val(response.category.parent_id);
+                    $('#edit_active').prop('checked', response.category.active);
 
                     // Prevent selecting self as parent (disable option)
                     $('#edit_parent_id option').prop('disabled', false); // Reset

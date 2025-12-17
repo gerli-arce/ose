@@ -63,9 +63,24 @@
                                 data-feather="dollar-sign"></i><span>Ventas</span></a>
                         <ul class="sidebar-submenu">
                             <li><a href="{{ route('series.index') }}">Series y Foliación</a></li>
-                            <li><a href="{{ route('sales.documents.index') }}">Facturación</a></li>
+                            <li><a href="{{ route('quotations.index') }}">Cotizaciones / Proformas</a></li>
+                            <li><a href="{{ route('sales.documents.index') }}">Documentos de Venta</a></li>
+                            <li><a href="{{ route('sales.documents.create') }}">Nueva Factura/Boleta</a></li>
                         </ul>
                     </li>
+
+                    <li class="sidebar-list"><a class="sidebar-link sidebar-title" href="javascript:void(0)"><i
+                                data-feather="file-text"></i><span>SUNAT Electrónico</span></a>
+                        <ul class="sidebar-submenu">
+                            <li><a href="{{ route('sales.credit-notes.index') }}">Notas de Crédito</a></li>
+                            <li><a href="{{ route('sales.debit-notes.index') }}">Notas de Débito</a></li>
+                            <li><a href="{{ route('despatch.index') }}">Guías de Remisión</a></li>
+                            <li><a href="{{ route('sales.voided.index') }}">Comunicación de Baja</a></li>
+                            <li><a href="{{ route('sales.summaries.index') }}">Resúmenes Diarios</a></li>
+                            <li><a href="{{ route('settings.sunat.index') }}">Configuración SUNAT</a></li>
+                        </ul>
+                    </li>
+
 
                     <li class="sidebar-list"><a class="sidebar-link sidebar-title" href="javascript:void(0)"><i
                                 data-feather="shopping-bag"></i><span>Compras & Gastos</span></a>
@@ -78,10 +93,12 @@
                      <li class="sidebar-list"><a class="sidebar-link sidebar-title" href="javascript:void(0)"><i
                                 data-feather="credit-card"></i><span>Caja & Bancos</span></a>
                         <ul class="sidebar-submenu">
-                            <li><a href="{{ route('cash.index') }}">Cajas (POS)</a></li>
+                            <li><a href="{{ route('pos.index') }}" target="_blank"><i class="fa fa-external-link me-1"></i>Punto de Venta (POS)</a></li>
+                            <li><a href="{{ route('cash.index') }}">Cajas</a></li>
                             <li><a href="{{ route('banks.index') }}">Cuentas Bancarias</a></li>
                         </ul>
                     </li>
+
 
                      <li class="sidebar-list"><a class="sidebar-link sidebar-title" href="javascript:void(0)"><i
                                 data-feather="bar-chart"></i><span>Reportes</span></a>

@@ -15,6 +15,7 @@ use App\Models\PaymentMethod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Jobs\SendSalesDocumentToSunatJob;
 
 class SalesDocumentController extends Controller
 {
@@ -144,10 +145,9 @@ class SalesDocumentController extends Controller
                 'sent_at' => null
             ]);
             
-            // 5. Simulate immediate "Send" if requested (or queued)
-            if ($request->has('send_to_sunat')) {
-                // In generic mode, we might just mark it accepted for demo
-                // Or leave separate action. Let's just create the record pending.
+            // 5. Enviar a SUNAT si se solicita
+            if ($request->boolean('send_to_sunat')) {
+                SendSalesDocumentToSunatJob::dispatch($document->id);
             }
 
             DB::commit();
@@ -172,6 +172,19 @@ class SalesDocumentController extends Controller
          $document->load('items', 'items.product', 'customer', 'eDocument', 'payments');
          
          return view('sales.invoices.show', compact('document'));
+    }
+
+    /**
+     * Reenviar manualmente a SUNAT.
+     */
+    public function resendToSunat(SalesDocument $document)
+    {
+        $companyId = session('current_company_id');
+        if ($document->company_id != $companyId) abort(403);
+
+        SendSalesDocumentToSunatJob::dispatch($document->id);
+
+        return back()->with('success', 'Envío a SUNAT encolado.');
     }
 
     // Helper for Stock Deduction

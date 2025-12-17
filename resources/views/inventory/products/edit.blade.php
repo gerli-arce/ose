@@ -80,31 +80,40 @@
                             </div>
 
                             <div class="col-md-4">
-                                <div class="card bg-light border-0">
+                                <div class="card border">
                                     <div class="card-body">
-                                        <h6 class="mb-3">Precios e Imagen</h6>
+                                        <h6 class="mb-4 fw-bold text-dark border-bottom pb-2">Precios e Imagen</h6>
                                         <div class="mb-3">
-                                            <label class="form-label">Precio Venta (Inc. IGV)</label>
+                                            <label class="form-label fw-bold text-dark">Precio Venta (Inc. IGV)</label>
                                             <div class="input-group">
                                                 <span class="input-group-text">S/</span>
                                                 <input class="form-control" name="sale_price" type="number" step="0.01" value="{{ $product->sale_price }}">
                                             </div>
                                         </div>
                                         <div class="mb-3">
-                                            <label class="form-label">Costo Referencial</label>
+                                            <label class="form-label fw-bold text-dark">Costo Referencial</label>
                                             <div class="input-group">
                                                 <span class="input-group-text">S/</span>
                                                 <input class="form-control" name="cost_price" type="number" step="0.01" value="{{ $product->cost_price }}">
                                             </div>
                                         </div>
                                         <div class="mb-3">
-                                            <label class="form-label">Imagen</label>
-                                            @if($product->image_path)
-                                                <div class="mb-2">
-                                                    <img src="{{ asset($product->image_path) }}" width="60" class="rounded">
+                                            <label class="form-label fw-bold text-dark">Imagen</label>
+                                            <div id="dropZone" class="mb-3 text-center p-3 border rounded bg-white position-relative" 
+                                                 style="min-height: 200px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-style: dashed !important; border-width: 2px !important; border-color: #dee2e6 !important;">
+                                                
+                                                <div id="placeholderText" class="{{ $product->image_path ? 'd-none' : '' }}">
+                                                    <i class="fa fa-cloud-upload text-primary mb-2" style="font-size: 2rem;"></i>
+                                                    <div class="small fw-bold text-dark">Click, Arrastrar o Pegar (Ctrl+V)</div>
+                                                    <div class="text-muted" style="font-size: 0.75rem;">Soporta: JPG, PNG, WEBP</div>
                                                 </div>
-                                            @endif
-                                            <input class="form-control" name="image" type="file" accept="image/*">
+
+                                                <img id="imagePreview" src="{{ $product->image_path ? asset($product->image_path) : '' }}" 
+                                                     class="img-fluid rounded {{ !$product->image_path ? 'd-none' : '' }}" 
+                                                     style="max-height: 180px; width: auto;">
+                                                     
+                                                <input class="d-none" name="image" id="imageInput" type="file" accept="image/*">
+                                            </div>
                                         </div>
                                         <div class="form-check form-switch">
                                             <input class="form-check-input" id="active" name="active" type="checkbox" role="switch" {{ $product->active ? 'checked' : '' }}>
@@ -125,4 +134,74 @@
         </div>
     </div>
 </div>
+<script>
+    const dropZone = document.getElementById('dropZone');
+    const imageInput = document.getElementById('imageInput');
+    const imagePreview = document.getElementById('imagePreview');
+    const placeholderText = document.getElementById('placeholderText');
+
+    // Click to upload
+    dropZone.addEventListener('click', () => imageInput.click());
+
+    // File selection
+    imageInput.addEventListener('change', handleFileSelect);
+
+    // Drag & Drop
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#007bff';
+        dropZone.style.backgroundColor = '#f8f9fa';
+    });
+
+    dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#dee2e6';
+        dropZone.style.backgroundColor = '#fff';
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = '#dee2e6';
+        dropZone.style.backgroundColor = '#fff';
+        
+        if (e.dataTransfer.files.length > 0) {
+            imageInput.files = e.dataTransfer.files;
+            handleFileSelect({ target: imageInput });
+        }
+    });
+
+    // Paste from Clipboard
+    document.addEventListener('paste', (e) => {
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                const blob = items[i].getAsFile();
+                
+                // Create a File object from Blob to set to Input
+                const file = new File([blob], "pasted_image.png", { type: blob.type });
+                
+                // Set to input (using DataTransfer)
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                imageInput.files = dataTransfer.files;
+                
+                handleFileSelect({ target: imageInput });
+                break;
+            }
+        }
+    });
+
+    function handleFileSelect(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                imagePreview.src = ev.target.result;
+                imagePreview.classList.remove('d-none');
+                placeholderText.classList.add('d-none');
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+</script>
 @endsection

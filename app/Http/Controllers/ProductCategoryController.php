@@ -26,6 +26,7 @@ class ProductCategoryController extends Controller
                     'name' => $cat->name,
                     'code' => $cat->code,
                     'parent_name' => $cat->parent ? $cat->parent->name : '-',
+                    'active' => $cat->active,
                     'products_count' => $cat->products->count(),
                     'created_at' => $cat->created_at->format('Y-m-d H:i')
                 ];
@@ -56,7 +57,8 @@ class ProductCategoryController extends Controller
             'company_id' => $currentCompany->id,
             'name' => $request->name,
             'code' => $request->code,
-            'parent_id' => $request->parent_id
+            'parent_id' => $request->parent_id,
+            'active' => $request->has('active') ? true : false,
         ]);
 
         return response()->json(['success' => true, 'message' => 'Categoría creada exitosamente.']);
@@ -96,7 +98,8 @@ class ProductCategoryController extends Controller
         $category->update([
             'name' => $request->name,
             'code' => $request->code,
-            'parent_id' => $request->parent_id
+            'parent_id' => $request->parent_id,
+            'active' => $request->has('active') ? true : false,
         ]);
 
         return response()->json(['success' => true, 'message' => 'Categoría actualizada exitosamente.']);

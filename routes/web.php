@@ -24,6 +24,19 @@ Route::get('/', function () {
     return redirect()->route('dashboard');
 })->name('index');
 
+// API Routes (sin autenticación para selectores)
+Route::prefix('api')->group(function () {
+    // Ubigeos
+    Route::get('ubigeos/departments', [\App\Http\Controllers\Api\UbigeoController::class, 'departments']);
+    Route::get('ubigeos/provinces', [\App\Http\Controllers\Api\UbigeoController::class, 'provinces']);
+    Route::get('ubigeos/districts', [\App\Http\Controllers\Api\UbigeoController::class, 'districts']);
+    Route::get('ubigeos/{code}', [\App\Http\Controllers\Api\UbigeoController::class, 'show']);
+    
+    // Consulta de RUC/DNI
+    Route::get('documents/query-ruc', [\App\Http\Controllers\Api\DocumentQueryController::class, 'queryRuc']);
+    Route::get('documents/query-dni', [\App\Http\Controllers\Api\DocumentQueryController::class, 'queryDni']);
+});
+
 // Authentication Routes
 // Authentication Routes
 Route::get('login', [AuthController::class, 'showLoginForm'])->name('login');
@@ -137,6 +150,79 @@ Route::middleware(['auth'])->group(function () {
     Route::get('sales/invoices/create', [\App\Http\Controllers\SalesDocumentController::class, 'create'])->name('sales.invoices.create'); // explicit alias if needed or rely on resource
     Route::post('sales/payments', [\App\Http\Controllers\SalesPaymentController::class, 'store'])->name('sales.payments.store');
     Route::get('sales/edocs/{id}/send', [\App\Http\Controllers\EDocumentController::class, 'send'])->name('edocs.send');
+    Route::post('sales/documents/{document}/resend-sunat', [\App\Http\Controllers\SalesDocumentController::class, 'resendToSunat'])->name('sales.documents.resend.sunat');
+    Route::get('files/download', [\App\Http\Controllers\FileDownloadController::class, 'download'])->name('files.download');
+
+    // Generación de PDFs
+    Route::get('pdf/document/{document}/a4', [\App\Http\Controllers\PdfController::class, 'downloadA4'])->name('pdf.document.a4');
+    Route::get('pdf/document/{document}/ticket', [\App\Http\Controllers\PdfController::class, 'downloadTicket'])->name('pdf.document.ticket');
+    Route::get('pdf/document/{document}/view', [\App\Http\Controllers\PdfController::class, 'viewA4'])->name('pdf.document.view');
+
+    // Visor de Documentos Electrónicos (XML/CDR)
+    Route::get('edoc-viewer/{document}', [\App\Http\Controllers\EDocViewerController::class, 'show'])->name('edoc-viewer.show');
+    Route::get('edoc-viewer/{document}/xml', [\App\Http\Controllers\EDocViewerController::class, 'viewXml'])->name('edoc-viewer.view-xml');
+    Route::get('edoc-viewer/{document}/xml/download', [\App\Http\Controllers\EDocViewerController::class, 'downloadXml'])->name('edoc-viewer.download-xml');
+    Route::get('edoc-viewer/{document}/cdr', [\App\Http\Controllers\EDocViewerController::class, 'viewCdr'])->name('edoc-viewer.view-cdr');
+    Route::get('edoc-viewer/{document}/cdr/download', [\App\Http\Controllers\EDocViewerController::class, 'downloadCdr'])->name('edoc-viewer.download-cdr');
+    Route::get('edoc-viewer/attempt/{attempt}', [\App\Http\Controllers\EDocViewerController::class, 'viewAttempt'])->name('edoc-viewer.view-attempt');
+
+    // Notas de Crédito Electrónicas
+    Route::get('sales/credit-notes', [\App\Http\Controllers\CreditNoteController::class, 'index'])->name('sales.credit-notes.index');
+    Route::get('sales/credit-notes/create', [\App\Http\Controllers\CreditNoteController::class, 'create'])->name('sales.credit-notes.create');
+    Route::post('sales/credit-notes', [\App\Http\Controllers\CreditNoteController::class, 'store'])->name('sales.credit-notes.store');
+    Route::get('sales/credit-notes/{creditNote}', [\App\Http\Controllers\CreditNoteController::class, 'show'])->name('sales.credit-notes.show');
+    Route::post('sales/credit-notes/{creditNote}/resend', [\App\Http\Controllers\CreditNoteController::class, 'resendToSunat'])->name('sales.credit-notes.resend');
+
+    // Comunicación de Baja (Anulación de Documentos)
+    Route::get('sales/voided', [\App\Http\Controllers\VoidedDocumentController::class, 'index'])->name('sales.voided.index');
+    Route::get('sales/voided/create', [\App\Http\Controllers\VoidedDocumentController::class, 'create'])->name('sales.voided.create');
+    Route::post('sales/voided', [\App\Http\Controllers\VoidedDocumentController::class, 'store'])->name('sales.voided.store');
+    Route::get('sales/voided/{voided}', [\App\Http\Controllers\VoidedDocumentController::class, 'show'])->name('sales.voided.show');
+    Route::post('sales/voided/{voided}/resend', [\App\Http\Controllers\VoidedDocumentController::class, 'resend'])->name('sales.voided.resend');
+    Route::post('sales/voided/{voided}/check-status', [\App\Http\Controllers\VoidedDocumentController::class, 'checkStatus'])->name('sales.voided.check-status');
+
+    // Resumen Diario de Boletas
+    Route::get('sales/summaries', [\App\Http\Controllers\DailySummaryController::class, 'index'])->name('sales.summaries.index');
+    Route::get('sales/summaries/create', [\App\Http\Controllers\DailySummaryController::class, 'create'])->name('sales.summaries.create');
+    Route::post('sales/summaries', [\App\Http\Controllers\DailySummaryController::class, 'store'])->name('sales.summaries.store');
+    Route::get('sales/summaries/{summary}', [\App\Http\Controllers\DailySummaryController::class, 'show'])->name('sales.summaries.show');
+    Route::post('sales/summaries/{summary}/resend', [\App\Http\Controllers\DailySummaryController::class, 'resend'])->name('sales.summaries.resend');
+    Route::post('sales/summaries/{summary}/check-status', [\App\Http\Controllers\DailySummaryController::class, 'checkStatus'])->name('sales.summaries.check-status');
+    Route::post('sales/summaries/generate-daily', [\App\Http\Controllers\DailySummaryController::class, 'generateDaily'])->name('sales.summaries.generate-daily');
+
+    // Notas de Débito Electrónicas
+    Route::get('sales/debit-notes', [\App\Http\Controllers\DebitNoteController::class, 'index'])->name('sales.debit-notes.index');
+    Route::get('sales/debit-notes/create', [\App\Http\Controllers\DebitNoteController::class, 'create'])->name('sales.debit-notes.create');
+    Route::post('sales/debit-notes', [\App\Http\Controllers\DebitNoteController::class, 'store'])->name('sales.debit-notes.store');
+    Route::get('sales/debit-notes/{debitNote}', [\App\Http\Controllers\DebitNoteController::class, 'show'])->name('sales.debit-notes.show');
+    Route::post('sales/debit-notes/{debitNote}/resend', [\App\Http\Controllers\DebitNoteController::class, 'resendToSunat'])->name('sales.debit-notes.resend');
+
+    // Guías de Remisión Electrónicas
+    Route::get('despatch', [\App\Http\Controllers\DespatchAdviceController::class, 'index'])->name('despatch.index');
+    Route::get('despatch/create', [\App\Http\Controllers\DespatchAdviceController::class, 'create'])->name('despatch.create');
+    Route::post('despatch', [\App\Http\Controllers\DespatchAdviceController::class, 'store'])->name('despatch.store');
+    Route::get('despatch/{despatch}', [\App\Http\Controllers\DespatchAdviceController::class, 'show'])->name('despatch.show');
+    Route::post('despatch/{despatch}/resend', [\App\Http\Controllers\DespatchAdviceController::class, 'resendToSunat'])->name('despatch.resend');
+
+    // Cotizaciones / Proformas
+    Route::resource('quotations', \App\Http\Controllers\QuotationController::class);
+    Route::post('quotations/{quotation}/convert', [\App\Http\Controllers\QuotationController::class, 'convertToInvoice'])->name('quotations.convert');
+    Route::post('quotations/{quotation}/status', [\App\Http\Controllers\QuotationController::class, 'changeStatus'])->name('quotations.status');
+    Route::get('quotations/{quotation}/duplicate', [\App\Http\Controllers\QuotationController::class, 'duplicate'])->name('quotations.duplicate');
+    Route::get('quotations/{quotation}/pdf', [\App\Http\Controllers\QuotationPdfController::class, 'download'])->name('quotations.pdf');
+
+    // Punto de Venta (POS)
+    Route::get('pos', [\App\Http\Controllers\PosController::class, 'index'])->name('pos.index');
+    Route::get('pos/products', [\App\Http\Controllers\PosController::class, 'searchProducts'])->name('pos.products');
+    Route::get('pos/customers', [\App\Http\Controllers\PosController::class, 'searchCustomers'])->name('pos.customers');
+    Route::post('pos/sale', [\App\Http\Controllers\PosController::class, 'processSale'])->name('pos.sale');
+    Route::post('pos/quick-customer', [\App\Http\Controllers\PosController::class, 'quickCustomer'])->name('pos.quick-customer');
+
+    // Configuración SUNAT
+    Route::get('settings/sunat', [\App\Http\Controllers\SunatConfigController::class, 'index'])->name('settings.sunat.index');
+    Route::put('settings/sunat', [\App\Http\Controllers\SunatConfigController::class, 'update'])->name('settings.sunat.update');
+    Route::post('settings/sunat/test', [\App\Http\Controllers\SunatConfigController::class, 'testConnection'])->name('settings.sunat.test');
+    Route::delete('settings/sunat/certificate', [\App\Http\Controllers\SunatConfigController::class, 'deleteCertificate'])->name('settings.sunat.delete-certificate');
 
     // Compras
     Route::resource('purchases/documents', \App\Http\Controllers\PurchaseDocumentController::class)->names('purchases.documents')->except(['edit', 'update', 'destroy']);
