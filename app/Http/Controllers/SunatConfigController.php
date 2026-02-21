@@ -53,18 +53,24 @@ class SunatConfigController extends Controller
             $updateData['sunat_cert_password'] = Crypt::encryptString($validated['sunat_cert_password']);
         }
 
-        // Subir certificado si se proporcionó
         if ($request->hasFile('certificate')) {
             $certificate = $request->file('certificate');
-            
-            // Eliminar certificado anterior
+
+            if (!$certificate->isValid()) {
+                return back()->withErrors(['certificate' => 'No se pudo subir el certificado.'])->withInput();
+            }
+
             if ($company->sunat_cert_path && Storage::exists($company->sunat_cert_path)) {
                 Storage::delete($company->sunat_cert_path);
             }
 
-            // Guardar nuevo certificado
             $path = $certificate->store("certificates/{$companyId}", 'local');
             $updateData['sunat_cert_path'] = $path;
+
+            Log::info('Certificado SUNAT actualizado desde SunatConfigController', [
+                'company_id' => $companyId,
+                'path' => $path,
+            ]);
         }
 
         $company->update($updateData);

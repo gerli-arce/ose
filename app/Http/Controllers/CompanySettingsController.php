@@ -12,6 +12,7 @@ use App\Models\Branch;
 use App\Models\Contact;
 use App\Models\Product;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -19,18 +20,31 @@ use Illuminate\Support\Facades\DB;
 class CompanySettingsController extends Controller
 {
     /**
+     * Resolve company id from current context.
+     */
+    private function resolveCompanyId(?Request $request = null): int
+    {
+        if ($request && $request->has('company_id') && auth()->check() && auth()->user()->is_super_admin) {
+            return (int) $request->input('company_id');
+        }
+
+        $companyId = session('current_company_id') ?? session('company_id');
+
+        if (!$companyId) {
+            abort(400, 'Empresa no seleccionada.');
+        }
+
+        return (int) $companyId;
+    }
+
+    /**
      * Display the specified resource.
      * With Dashboard Stats.
      */
     public function index(Request $request)
     {
         // 1. Get Current Company
-        // Allow Super Admin to view specific company via query param
-        if ($request->has('company_id') && auth()->check() && auth()->user()->is_super_admin) {
-             $companyId = $request->input('company_id');
-        } else {
-             $companyId = session('company_id', 1);
-        }
+        $companyId = $this->resolveCompanyId($request);
         
         $company = Company::with(['subscriptions' => function($q) {
             $q->where('status', 'active')->latest();
@@ -149,7 +163,7 @@ class CompanySettingsController extends Controller
 
     public function updateGeneral(Request $request)
     {
-        $companyId = session('company_id', 1);
+        $companyId = $this->resolveCompanyId();
         $company = Company::findOrFail($companyId);
         
         $request->validate([
@@ -174,7 +188,7 @@ class CompanySettingsController extends Controller
     
     public function updateElectronic(Request $request)
     {
-        $companyId = session('company_id', 1);
+        $companyId = $this->resolveCompanyId();
         $company = Company::findOrFail($companyId);
         
         $request->validate([
@@ -199,8 +213,23 @@ class CompanySettingsController extends Controller
         }
         
         if ($request->hasFile('certificate')) {
-            $path = $request->file('certificate')->store('certificates'); // Private storage
+            $certificate = $request->file('certificate');
+
+            if (!$certificate->isValid()) {
+                return back()->withErrors(['certificate' => 'No se pudo subir el certificado.'])->withInput();
+            }
+
+            if ($company->sunat_cert_path && Storage::exists($company->sunat_cert_path)) {
+                Storage::delete($company->sunat_cert_path);
+            }
+
+            $path = $certificate->store("certificates/{$companyId}", 'local');
             $data['sunat_cert_path'] = $path;
+
+            Log::info('Certificado SUNAT actualizado desde CompanySettingsController', [
+                'company_id' => $companyId,
+                'path' => $path,
+            ]);
         }
         
         $company->update($data);
@@ -210,7 +239,7 @@ class CompanySettingsController extends Controller
 
     public function updateBilling(Request $request)
     {
-        $companyId = session('company_id', 1);
+        $companyId = $this->resolveCompanyId();
         
         $keys = ['default_currency', 'default_tax_rate', 'invoice_auto_numbering', 'invoice_pdf_template'];
         
