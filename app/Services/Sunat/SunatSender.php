@@ -70,13 +70,15 @@ class SunatSender
             'response_status' => $status['status'],
             'response_code' => $status['code'],
             'response_message' => $status['message'],
-            'hash' => $status['hash'] ?? null,
         ]);
 
         $eDoc->save();
 
         // Actualizar estado en documento de venta
         $document->sunat_status = $status['sunat_status'];
+        if (!empty($status['hash'])) {
+            $document->hash = $status['hash'];
+        }
         $document->save();
 
         return $eDoc;
@@ -90,9 +92,10 @@ class SunatSender
 
         EDocumentLog::create([
             'e_document_id' => $eDoc->id,
-            'message' => $message,
-            'details' => json_encode($this->resultToArray($result)),
+            'event_date_time' => now(),
             'status' => $status,
+            'message' => $message,
+            'raw_response' => json_encode($this->resultToArray($result)),
         ]);
     }
 

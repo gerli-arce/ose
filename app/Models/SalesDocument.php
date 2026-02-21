@@ -22,18 +22,23 @@ class SalesDocument extends Model
         'currency_id',
         'exchange_rate',
         'observation',
+        'observations',
         'subtotal',
         'tax_total',
-        'total_discount',
         'total',
         'status',
         'sunat_status',
         'payment_status',
+        'electronic_uuid',
+        'hash',
         // Campos para NC/ND
         'related_document_id',
         'credit_note_type_id',
         'debit_note_type_id',
         'note_reason',
+        'voided_document_id',
+        'voided_at',
+        'daily_summary_id',
     ];
 
     protected $casts = [

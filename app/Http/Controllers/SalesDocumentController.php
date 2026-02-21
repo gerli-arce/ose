@@ -109,7 +109,6 @@ class SalesDocumentController extends Controller
                 'observation' => $request->observation,
                 'subtotal' => $request->subtotal,
                 'tax_total' => $request->total_igv, // Map input to DB column
-                'total_discount' => 0, 
                 'total' => $request->total,
                 'status' => 'emitted',
                 'sunat_status' => 'pending',
@@ -118,21 +117,24 @@ class SalesDocumentController extends Controller
 
             // 3. Create Items & Deduct Stock
             foreach ($request->items as $item) {
+                $product = Product::findOrFail($item['product_id']);
+
                 // Save Item
                 SalesDocumentItem::create([
                     'sales_document_id' => $document->id,
                     'product_id' => $item['product_id'],
-                    'code' => $item['code'], // Hidden field or lookup
                     'description' => $item['description'],
                     'quantity' => $item['quantity'],
+                    'unit_id' => $product?->unit_id ?? 1,
                     'unit_price' => $item['unit_price'],
-                    'total' => $item['total'],
-                    'igv_amount' => $item['igv'] ?? 0,
-                    'discount_amount' => 0
+                    'discount_percent' => 0,
+                    'discount_amount' => 0,
+                    'line_subtotal' => ($item['total'] ?? 0) - ($item['igv'] ?? 0),
+                    'line_tax_total' => $item['igv'] ?? 0,
+                    'line_total' => $item['total'] ?? 0,
                 ]);
 
                 // Stock Deduction (If Product not Service)
-                $product = Product::find($item['product_id']);
                 if (!$product->is_service) {
                     $this->deductStock($companyId, $branchId, $product, $item['quantity'], $document);
                 }
@@ -140,7 +142,7 @@ class SalesDocumentController extends Controller
 
             // 4. E-Invoice Simulation (Create EDocument entry)
             $document->eDocument()->create([
-                'company_id' => $companyId,
+                'provider' => 'sunat',
                 'response_status' => 'pending',
                 'sent_at' => null
             ]);
@@ -209,7 +211,7 @@ class SalesDocumentController extends Controller
             'source_type' => 'sale', // document
             // 'source_id' => $document->id, // need column in stock_movement or polymorphism
             'cost_unit' => $product->cost_price, 
-            'observations' => 'Venta ' . $document->series . '-' . $document->number
+            'observations' => 'Venta ' . $document->full_number
         ]);
 
         // 2. Update Stock

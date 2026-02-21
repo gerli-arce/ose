@@ -58,16 +58,21 @@ class SunatDebitNoteSender
 
                 // Actualizar o crear EDocument
                 $this->updateEDocument($debitNote, [
+                    'provider' => 'sunat',
                     'xml_path' => $xmlPath,
                     'cdr_path' => $cdrPath,
-                    'hash' => $hash,
+                    'signed_at' => now(),
+                    'sent_at' => now(),
                     'response_status' => 'accepted',
                     'response_code' => $cdr?->getCode(),
                     'response_message' => $cdr?->getDescription(),
                 ]);
 
                 // Actualizar estado del documento
-                $debitNote->update(['sunat_status' => 'accepted']);
+                $debitNote->update([
+                    'sunat_status' => 'accepted',
+                    'hash' => $hash,
+                ]);
 
                 Log::info('Nota de Débito enviada exitosamente', [
                     'id' => $debitNote->id,
@@ -86,8 +91,10 @@ class SunatDebitNoteSender
             $error = $result->getError();
             
             $this->updateEDocument($debitNote, [
+                'provider' => 'sunat',
                 'xml_path' => $xmlPath,
-                'hash' => $hash,
+                'signed_at' => now(),
+                'sent_at' => now(),
                 'response_status' => 'rejected',
                 'response_code' => $error?->getCode(),
                 'response_message' => $error?->getMessage(),

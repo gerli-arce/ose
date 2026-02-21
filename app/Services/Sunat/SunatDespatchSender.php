@@ -29,7 +29,7 @@ class SunatDespatchSender
             $greenterDespatch = $this->builder->build($despatch);
 
             // Obtener cliente See configurado
-            $see = $this->clientFactory->createForCompany($despatch->company);
+            $see = $this->clientFactory->make($despatch->company);
 
             // Generar XML firmado
             $xml = $see->getXmlSigned($greenterDespatch);
@@ -148,22 +148,21 @@ class SunatDespatchSender
         ?string $hash,
         $result
     ): void {
+        if (!$despatch->sales_document_id) {
+            return;
+        }
+
         EDocument::updateOrCreate(
+            ['sales_document_id' => $despatch->sales_document_id],
             [
-                'documentable_type' => DespatchAdvice::class,
-                'documentable_id' => $despatch->id,
-            ],
-            [
-                'company_id' => $despatch->company_id,
-                'document_type' => '09',
-                'series' => $despatch->series?->prefix,
-                'number' => $despatch->number,
+                'provider' => 'sunat',
                 'xml_path' => $xmlPath,
                 'cdr_path' => $cdrPath,
-                'hash' => $hash,
+                'signed_at' => now(),
+                'sent_at' => now(),
+                'response_status' => 'accepted',
                 'response_code' => $result->getCdrResponse()?->getCode(),
                 'response_message' => $result->getCdrResponse()?->getDescription(),
-                'status' => 'accepted',
             ]
         );
     }

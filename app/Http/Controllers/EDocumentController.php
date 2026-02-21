@@ -29,8 +29,14 @@ class EDocumentController extends Controller
         // Log
         EDocumentLog::create([
             'e_document_id' => $eDoc->id,
+            'event_date_time' => now(),
+            'status' => 'success',
             'message' => $message,
-            'status' => 'success'
+            'raw_response' => json_encode([
+                'mode' => 'simulation',
+                'response_status' => $status,
+                'response_message' => $message,
+            ])
         ]);
 
         return back()->with('success', 'Documento enviado a SUNAT (Simulación): ' . $status);

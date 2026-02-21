@@ -16,7 +16,7 @@ use App\Models\SalesDocumentItem;
 use App\Models\SalesPayment;
 use App\Models\SalesPaymentAllocation;
 use App\Models\Stock;
-use App\Jobs\SendDocumentToSunatJob;
+use App\Jobs\SendSalesDocumentToSunatJob;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -200,6 +200,7 @@ class PosController extends Controller
             }
 
             $subtotal -= $discountTotal;
+            $subtotal = max($subtotal, 0);
             $taxTotal = $subtotal * 0.18;
             $total = $subtotal + $taxTotal;
 
@@ -212,16 +213,16 @@ class PosController extends Controller
                 'number' => $nextNumber,
                 'customer_id' => $validated['customer_id'],
                 'currency_id' => 1, // PEN por defecto
+                'exchange_rate' => 1,
                 'issue_date' => Carbon::today(),
                 'due_date' => Carbon::today(),
                 'subtotal' => $subtotal,
-                'discount_total' => $discountTotal,
                 'tax_total' => $taxTotal,
                 'total' => $total,
                 'status' => 'emitted',
+                'sunat_status' => 'pending',
                 'payment_status' => 'paid',
-                'notes' => $validated['notes'] ?? null,
-                'pos_sale' => true,
+                'observation' => $validated['notes'] ?? null,
             ]);
 
             // Crear items
@@ -239,12 +240,13 @@ class PosController extends Controller
                     'sales_document_id' => $salesDocument->id,
                     'product_id' => $product->id,
                     'description' => $product->name,
-                    'unit_code' => $product->unit_code ?? 'NIU',
                     'quantity' => $qty,
+                    'unit_id' => $product->unit_id ?? 1,
                     'unit_price' => $price,
-                    'discount' => $discount,
-                    'subtotal' => $lineSubtotal,
-                    'tax_amount' => $lineTax,
+                    'discount_percent' => 0,
+                    'discount_amount' => $discount,
+                    'line_subtotal' => $lineSubtotal,
+                    'line_tax_total' => $lineTax,
                     'line_total' => $lineTotal,
                 ]);
 
@@ -277,7 +279,7 @@ class PosController extends Controller
 
             // Enviar a SUNAT si se requiere
             if ($request->boolean('send_to_sunat', true)) {
-                SendDocumentToSunatJob::dispatch($salesDocument->id);
+                SendSalesDocumentToSunatJob::dispatch($salesDocument->id);
             }
 
             DB::commit();

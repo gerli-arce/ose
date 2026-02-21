@@ -73,7 +73,7 @@ class SunatPdfGenerator
             'items' => $document->items,
             'qrCode' => $this->generateQrCode($document),
             'hash' => $document->eDocument?->hash ?? '',
-            'amountInWords' => $this->numberToWords($document->total, $document->currency ?? 'PEN'),
+            'amountInWords' => $this->numberToWords($document->total, $document->currency?->code ?? 'PEN'),
             'documentTypeName' => $this->getDocumentTypeName($document),
             'emissionDate' => $document->issue_date->format('d/m/Y'),
             'fullNumber' => $this->getFullNumber($document),

@@ -35,6 +35,14 @@ class Product extends Model
         return $this->belongsTo(UnitOfMeasure::class, 'unit_id');
     }
 
+    /**
+     * Alias por compatibilidad con código existente.
+     */
+    public function unitOfMeasure()
+    {
+        return $this->belongsTo(UnitOfMeasure::class, 'unit_id');
+    }
+
     public function taxes()
     {
         return $this->belongsToMany(Tax::class, 'product_taxes');

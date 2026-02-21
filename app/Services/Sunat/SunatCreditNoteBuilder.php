@@ -109,9 +109,11 @@ class SunatCreditNoteBuilder
         $address = new Address();
         $address->setPais('PE');
 
-        if ($company?->address) {
-            $address->setDireccion($company->address ?? '');
-        }
+        $companyAddress = $company?->address;
+        $direccion = is_object($companyAddress)
+            ? ($companyAddress->line1 ?? $companyAddress->address ?? '')
+            : (string) ($companyAddress ?? '');
+        $address->setDireccion($direccion);
 
         return (new GreenterCompany())
             ->setRuc($company->tax_id)

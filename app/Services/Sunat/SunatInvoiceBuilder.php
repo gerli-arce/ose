@@ -21,7 +21,7 @@ class SunatInvoiceBuilder
 {
     public function build(SalesDocument $document): Invoice
     {
-        $document->loadMissing(['company', 'customer', 'series', 'items.product', 'currency']);
+        $document->loadMissing(['company', 'customer', 'series', 'items.product.unit', 'items.unit', 'currency', 'documentType']);
 
         $serie = $document->series?->prefix;
         $tipoDoc = $document->documentType?->code;
@@ -71,15 +71,17 @@ class SunatInvoiceBuilder
         $address = new Address();
         $address->setPais('PE');
 
-        // Campos opcionales, rellenar si existen.
-        if ($company?->address) {
-            $address->setDireccion($company->address->line1 ?? $company->address->address ?? '');
-            $address->setDepartamento($company->address->state ?? '');
-            $address->setProvincia($company->address->province ?? '');
-            $address->setDistrito($company->address->district ?? '');
-            $address->setUbigueo($company->address->ubigeo ?? '');
+        $companyAddress = $company?->address;
+
+        // "address" puede ser relación Address o campo texto.
+        if (is_object($companyAddress)) {
+            $address->setDireccion($companyAddress->line1 ?? $companyAddress->address ?? '');
+            $address->setDepartamento($companyAddress->state ?? '');
+            $address->setProvincia($companyAddress->province ?? '');
+            $address->setDistrito($companyAddress->district ?? '');
+            $address->setUbigueo($companyAddress->ubigeo ?? '');
         } else {
-            $address->setDireccion($company->address ?? '');
+            $address->setDireccion((string) ($companyAddress ?? ''));
         }
 
         return (new GreenterCompany())
@@ -108,15 +110,15 @@ class SunatInvoiceBuilder
     {
         return $document->items->map(function ($item) {
             $cantidad = (float) $item->quantity;
-            $totalLinea = (float) $item->total;
-            $igv = (float) ($item->igv_amount ?? 0);
+            $totalLinea = (float) ($item->line_total ?? $item->total ?? 0);
+            $igv = (float) ($item->line_tax_total ?? $item->igv_amount ?? 0);
             $valorVenta = $totalLinea - $igv;
             $valorUnitario = $cantidad > 0 ? $valorVenta / $cantidad : 0;
             $precioUnitario = $cantidad > 0 ? $totalLinea / $cantidad : 0;
 
             $detail = (new SaleDetail())
-                ->setCodProducto($item->code ?? $item->product?->code ?? '')
-                ->setUnidad($item->product?->unit?->code ?? 'NIU')
+                ->setCodProducto($item->product?->code ?? '')
+                ->setUnidad($item->unit?->code ?? $item->product?->unit?->code ?? 'NIU')
                 ->setDescripcion($item->description ?? $item->product?->name ?? 'ITEM')
                 ->setCantidad(round($cantidad, 2))
                 ->setMtoValorUnitario(round($valorUnitario, 6))

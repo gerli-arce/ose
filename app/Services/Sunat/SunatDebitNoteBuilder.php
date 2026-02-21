@@ -7,19 +7,18 @@ use Carbon\Carbon;
 use Greenter\Model\Client\Client;
 use Greenter\Model\Company\Address;
 use Greenter\Model\Company\Company;
-use Greenter\Model\Sale\Document;
 use Greenter\Model\Sale\Note;
 use Greenter\Model\Sale\SaleDetail;
 use InvalidArgumentException;
 
 /**
- * Construye el objeto Note (Nota de Débito) de Greenter
- * Documento SUNAT código 08
+ * Construye el objeto Note (Nota de Debito) de Greenter.
+ * Documento SUNAT codigo 08.
  */
 class SunatDebitNoteBuilder
 {
     /**
-     * Construir objeto Note para Nota de Débito
+     * Construir objeto Note para Nota de Debito.
      */
     public function build(SalesDocument $debitNote): Note
     {
@@ -28,10 +27,13 @@ class SunatDebitNoteBuilder
             'customer',
             'series',
             'documentType',
+            'currency',
+            'items.unit',
+            'items.product.unit',
             'items.product.unitOfMeasure',
             'relatedDocument.series',
             'relatedDocument.documentType',
-            'debitNoteType'
+            'debitNoteType',
         ]);
 
         $this->validate($debitNote);
@@ -39,63 +41,62 @@ class SunatDebitNoteBuilder
         $company = $this->mapCompany($debitNote);
         $client = $this->mapClient($debitNote);
         $items = $this->mapItems($debitNote);
-        $relatedDoc = $this->mapRelatedDocument($debitNote);
 
-        $note = (new Note())
+        return (new Note())
             ->setUblVersion('2.1')
-            ->setTipoDoc('08') // Nota de Débito
+            ->setTipoDoc('08')
             ->setSerie($debitNote->series->prefix)
             ->setCorrelativo((string) $debitNote->number)
             ->setFechaEmision(Carbon::parse($debitNote->issue_date))
             ->setTipDocAfectado($debitNote->relatedDocument->documentType->code)
-            ->setNumDocfectado(
-                $debitNote->relatedDocument->series->prefix . '-' .
-                str_pad($debitNote->relatedDocument->number, 8, '0', STR_PAD_LEFT)
-            )
+            ->setNumDocfectado($this->formatRelatedDocumentNumber($debitNote->relatedDocument))
             ->setCodMotivo($debitNote->debitNoteType->code)
             ->setDesMotivo($debitNote->note_reason ?? $debitNote->debitNoteType->name)
-            ->setTipoMoneda($debitNote->currency ?? 'PEN')
+            ->setTipoMoneda($debitNote->currency?->code ?: 'PEN')
             ->setCompany($company)
             ->setClient($client)
-            ->setMtoOperGravadas($debitNote->subtotal)
-            ->setMtoIGV($debitNote->tax_total ?? $debitNote->total_igv ?? 0)
-            ->setTotalImpuestos($debitNote->tax_total ?? $debitNote->total_igv ?? 0)
-            ->setMtoImpVenta($debitNote->total)
+            ->setMtoOperGravadas((float) $debitNote->subtotal)
+            ->setMtoIGV((float) ($debitNote->tax_total ?? 0))
+            ->setTotalImpuestos((float) ($debitNote->tax_total ?? 0))
+            ->setMtoImpVenta((float) $debitNote->total)
             ->setDetails($items);
-
-        return $note;
     }
 
     private function validate(SalesDocument $debitNote): void
     {
         if (!$debitNote->company) {
-            throw new InvalidArgumentException('La nota de débito no tiene empresa asociada.');
+            throw new InvalidArgumentException('La nota de debito no tiene empresa asociada.');
         }
 
         if (!$debitNote->relatedDocument) {
-            throw new InvalidArgumentException('La nota de débito debe estar asociada a un documento.');
+            throw new InvalidArgumentException('La nota de debito debe estar asociada a un documento.');
         }
 
         if (!$debitNote->debitNoteType) {
-            throw new InvalidArgumentException('La nota de débito debe tener un tipo asignado (Catálogo 10).');
+            throw new InvalidArgumentException('La nota de debito debe tener un tipo asignado (Catalogo 10).');
         }
 
         if ($debitNote->items->isEmpty()) {
-            throw new InvalidArgumentException('La nota de débito debe tener al menos un ítem.');
+            throw new InvalidArgumentException('La nota de debito debe tener al menos un item.');
         }
     }
 
     private function mapCompany(SalesDocument $debitNote): Company
     {
         $company = $debitNote->company;
-        
+
         $address = new Address();
         $address->setUbigueo($company->ubigeo ?? '150101');
         $address->setDepartamento($company->department ?? 'LIMA');
         $address->setProvincia($company->province ?? 'LIMA');
         $address->setDistrito($company->district ?? 'LIMA');
         $address->setUrbanizacion($company->urbanization ?? '-');
-        $address->setDireccion($company->address ?? '');
+
+        $companyAddress = $company?->address;
+        $direccion = is_object($companyAddress)
+            ? ($companyAddress->line1 ?? $companyAddress->address ?? '')
+            : (string) ($companyAddress ?? '');
+        $address->setDireccion($direccion);
         $address->setCodLocal('0000');
 
         return (new Company())
@@ -108,9 +109,8 @@ class SunatDebitNoteBuilder
     private function mapClient(SalesDocument $debitNote): Client
     {
         $customer = $debitNote->customer;
-        
+
         if (!$customer) {
-            // Cliente genérico para boletas
             return (new Client())
                 ->setTipoDoc('1')
                 ->setNumDoc('00000000')
@@ -126,37 +126,43 @@ class SunatDebitNoteBuilder
     private function mapItems(SalesDocument $debitNote): array
     {
         $items = [];
-        
-        foreach ($debitNote->items as $index => $item) {
-            $detail = (new SaleDetail())
-                ->setCodProducto($item->product?->code ?? 'PROD' . ($index + 1))
-                ->setUnidad($item->product?->unitOfMeasure?->sunat_code ?? 'NIU')
-                ->setCantidad($item->quantity)
-                ->setMtoValorUnitario(round($item->unit_price / 1.18, 2))
-                ->setDescripcion($item->description ?? $item->product?->name ?? 'Producto')
-                ->setMtoBaseIgv(round($item->total / 1.18, 2))
-                ->setPorcentajeIgv(18.00)
-                ->setIgv(round($item->total - ($item->total / 1.18), 2))
-                ->setTipAfeIgv('10') // Gravado - Operación Onerosa
-                ->setTotalImpuestos(round($item->total - ($item->total / 1.18), 2))
-                ->setMtoValorVenta(round($item->total / 1.18, 2))
-                ->setMtoPrecioUnitario($item->unit_price);
 
-            $items[] = $detail;
+        foreach ($debitNote->items as $index => $item) {
+            $quantity = (float) ($item->quantity ?? 0);
+            $lineTotal = (float) ($item->line_total ?? $item->total ?? 0);
+            $lineTax = (float) ($item->line_tax_total ?? $item->igv_amount ?? 0);
+            $lineNet = max($lineTotal - $lineTax, 0);
+            $unitNet = $quantity > 0 ? $lineNet / $quantity : 0;
+            $unitGross = $quantity > 0 ? $lineTotal / $quantity : (float) ($item->unit_price ?? 0);
+
+            $unitSunatCode = $item->unit?->sunat_code
+                ?? $item->product?->unit?->sunat_code
+                ?? $item->product?->unitOfMeasure?->sunat_code
+                ?? 'NIU';
+
+            $items[] = (new SaleDetail())
+                ->setCodProducto($item->code ?: ('PROD' . ($index + 1)))
+                ->setUnidad($unitSunatCode)
+                ->setCantidad($quantity)
+                ->setMtoValorUnitario(round($unitNet, 6))
+                ->setDescripcion($item->description ?? $item->product?->name ?? 'Producto')
+                ->setMtoBaseIgv(round($lineNet, 2))
+                ->setPorcentajeIgv(18.00)
+                ->setIgv(round($lineTax, 2))
+                ->setTipAfeIgv('10')
+                ->setTotalImpuestos(round($lineTax, 2))
+                ->setMtoValorVenta(round($lineNet, 2))
+                ->setMtoPrecioUnitario(round($unitGross, 6));
         }
 
         return $items;
     }
 
-    private function mapRelatedDocument(SalesDocument $debitNote): Document
+    private function formatRelatedDocumentNumber(SalesDocument $related): string
     {
-        $related = $debitNote->relatedDocument;
-        
-        return (new Document())
-            ->setTipoDoc($related->documentType->code)
-            ->setNroDoc(
-                $related->series->prefix . '-' .
-                str_pad($related->number, 8, '0', STR_PAD_LEFT)
-            );
+        $series = $related->series?->prefix ?? '';
+        $number = str_pad((string) $related->number, 8, '0', STR_PAD_LEFT);
+
+        return "{$series}-{$number}";
     }
 }

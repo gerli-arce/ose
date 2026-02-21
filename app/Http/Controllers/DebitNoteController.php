@@ -104,8 +104,15 @@ class DebitNoteController extends Controller
             // La serie de ND depende del documento original
             $seriesPrefix = $originalDoc->documentType->code === '01' ? 'FD01' : 'BD01';
             $series = DocumentSeries::firstOrCreate(
-                ['company_id' => $companyId, 'prefix' => $seriesPrefix],
-                ['document_type_id' => $ndDocType->id, 'current_number' => 0]
+                [
+                    'company_id' => $companyId,
+                    'branch_id' => $originalDoc->branch_id,
+                    'prefix' => $seriesPrefix,
+                ],
+                [
+                    'document_type_id' => $ndDocType->id,
+                    'current_number' => 0,
+                ]
             );
 
             $debitNote = DB::transaction(function () use ($request, $companyId, $originalDoc, $ndDocType, $series) {
@@ -124,13 +131,14 @@ class DebitNoteController extends Controller
                 // Crear nota de débito
                 $nd = SalesDocument::create([
                     'company_id' => $companyId,
+                    'branch_id' => $originalDoc->branch_id,
                     'customer_id' => $originalDoc->customer_id,
                     'document_type_id' => $ndDocType->id,
                     'series_id' => $series->id,
                     'number' => $number,
                     'issue_date' => now(),
                     'due_date' => now()->addDays(30),
-                    'currency' => $originalDoc->currency ?? 'PEN',
+                    'currency_id' => $originalDoc->currency_id ?? 1,
                     'exchange_rate' => 1,
                     'subtotal' => $subtotal,
                     'tax_total' => $igv,
@@ -145,23 +153,29 @@ class DebitNoteController extends Controller
 
                 // Crear items
                 foreach ($request->items as $itemData) {
-                    $itemTotal = $itemData['quantity'] * $itemData['unit_price'];
+                    $itemSubtotal = $itemData['quantity'] * $itemData['unit_price'];
+                    $itemTax = round($itemSubtotal * 0.18, 2);
+                    $itemTotal = round($itemSubtotal + $itemTax, 2);
                     
                     SalesDocumentItem::create([
                         'sales_document_id' => $nd->id,
                         'product_id' => null,
                         'description' => $itemData['description'],
                         'quantity' => $itemData['quantity'],
+                        'unit_id' => 1,
                         'unit_price' => $itemData['unit_price'],
-                        'discount' => 0,
-                        'tax' => round($itemTotal * 0.18, 2),
-                        'total' => $itemTotal,
+                        'discount_percent' => 0,
+                        'discount_amount' => 0,
+                        'line_subtotal' => $itemSubtotal,
+                        'line_tax_total' => $itemTax,
+                        'line_total' => $itemTotal,
                     ]);
                 }
 
                 // Crear registro de documento electrónico
                 EDocument::create([
                     'sales_document_id' => $nd->id,
+                    'provider' => 'sunat',
                     'response_status' => 'pending',
                 ]);
 

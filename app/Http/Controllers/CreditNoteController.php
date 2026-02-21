@@ -80,11 +80,11 @@ class CreditNoteController extends Controller
             $prefix = $relatedDocument->isFactura() ? 'FC01' : 'BC01';
             $series = collect([
                 DocumentSeries::create([
+                    'company_id' => $companyId,
                     'branch_id' => $branchId,
                     'document_type_id' => $documentType->id,
                     'prefix' => $prefix,
                     'current_number' => 0,
-                    'active' => true,
                 ])
             ]);
         }
@@ -151,7 +151,6 @@ class CreditNoteController extends Controller
                 'exchange_rate' => $relatedDocument->exchange_rate,
                 'subtotal' => $request->subtotal,
                 'tax_total' => $request->total_igv,
-                'total_discount' => 0,
                 'total' => $request->total,
                 'status' => 'emitted',
                 'sunat_status' => 'pending',
@@ -165,16 +164,20 @@ class CreditNoteController extends Controller
 
             // Crear items
             foreach ($request->items as $item) {
+                $product = \App\Models\Product::findOrFail($item['product_id']);
+
                 SalesDocumentItem::create([
                     'sales_document_id' => $creditNote->id,
                     'product_id' => $item['product_id'],
-                    'code' => $item['code'],
                     'description' => $item['description'],
                     'quantity' => $item['quantity'],
+                    'unit_id' => $item['unit_id'] ?? $product?->unit_id ?? 1,
                     'unit_price' => $item['unit_price'],
-                    'total' => $item['total'],
-                    'igv_amount' => $item['igv'] ?? 0,
+                    'discount_percent' => 0,
                     'discount_amount' => 0,
+                    'line_subtotal' => ($item['total'] ?? 0) - ($item['igv'] ?? 0),
+                    'line_tax_total' => $item['igv'] ?? 0,
+                    'line_total' => $item['total'] ?? 0,
                 ]);
 
                 // Ajustar stock si corresponde
@@ -185,7 +188,7 @@ class CreditNoteController extends Controller
 
             // Crear registro EDocument
             $creditNote->eDocument()->create([
-                'company_id' => $companyId,
+                'provider' => 'sunat',
                 'response_status' => 'pending',
                 'sent_at' => null,
             ]);

@@ -385,13 +385,13 @@ class QuotationController extends Controller
                 'issue_date' => Carbon::today(),
                 'due_date' => Carbon::today()->addDays(30),
                 'subtotal' => $quotation->subtotal,
-                'discount_total' => $quotation->discount_total,
                 'tax_total' => $quotation->tax_total,
                 'total' => $quotation->total,
                 'exchange_rate' => $quotation->exchange_rate,
                 'status' => 'emitted',
+                'sunat_status' => 'pending',
                 'payment_status' => 'unpaid',
-                'notes' => "Generado desde Cotización {$quotation->full_number}",
+                'observation' => "Generado desde Cotizacion {$quotation->full_number}",
             ]);
 
             // Crear items del documento
@@ -400,12 +400,13 @@ class QuotationController extends Controller
                     'sales_document_id' => $salesDocument->id,
                     'product_id' => $item->product_id,
                     'description' => $item->description,
-                    'unit_code' => $item->unit_code,
+                    'unit_id' => $item->product?->unit_id ?? 1,
                     'quantity' => $item->quantity,
                     'unit_price' => $item->unit_price,
-                    'discount' => $item->discount_amount,
-                    'subtotal' => $item->subtotal,
-                    'tax_amount' => $item->tax_amount,
+                    'discount_percent' => $item->discount_percent ?? 0,
+                    'discount_amount' => $item->discount_amount,
+                    'line_subtotal' => $item->subtotal,
+                    'line_tax_total' => $item->tax_amount,
                     'line_total' => $item->total,
                 ]);
             }
@@ -501,3 +502,4 @@ class QuotationController extends Controller
         }
     }
 }
+

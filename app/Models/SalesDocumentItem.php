@@ -12,13 +12,15 @@ class SalesDocumentItem extends Model
     protected $fillable = [
         'sales_document_id',
         'product_id',
-        'code',
         'description',
         'quantity',
+        'unit_id',
         'unit_price',
-        'total',
-        'igv_amount',
-        'discount_amount'
+        'discount_percent',
+        'discount_amount',
+        'line_subtotal',
+        'line_tax_total',
+        'line_total',
     ];
 
     public function document()
@@ -29,5 +31,34 @@ class SalesDocumentItem extends Model
     public function product()
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function unit()
+    {
+        return $this->belongsTo(UnitOfMeasure::class, 'unit_id');
+    }
+
+    /**
+     * Alias para compatibilidad con código SUNAT existente.
+     */
+    public function getTotalAttribute(): float
+    {
+        return (float) ($this->line_total ?? 0);
+    }
+
+    /**
+     * Alias para compatibilidad con código SUNAT existente.
+     */
+    public function getIgvAmountAttribute(): float
+    {
+        return (float) ($this->line_tax_total ?? 0);
+    }
+
+    /**
+     * Alias para compatibilidad con código SUNAT existente.
+     */
+    public function getCodeAttribute(): string
+    {
+        return (string) ($this->product?->code ?? '');
     }
 }

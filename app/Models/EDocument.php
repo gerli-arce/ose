@@ -11,14 +11,20 @@ class EDocument extends Model
 
     protected $fillable = [
         'sales_document_id',
-        'company_id',
-        'xml_content', // Store generated XML path or content
-        'cdr_content', // Store CDR path or content
-        'hash',
+        'provider',
+        'xml_path',
+        'pdf_path',
+        'signed_at',
+        'sent_at',
+        'response_status',
         'response_code',
-        'response_description',
-        'response_status', // pending, accepted, rejected
-        'sent_at'
+        'response_message',
+        'cdr_path',
+    ];
+
+    protected $casts = [
+        'signed_at' => 'datetime',
+        'sent_at' => 'datetime',
     ];
 
     public function document()
@@ -29,5 +35,13 @@ class EDocument extends Model
     public function logs()
     {
         return $this->hasMany(EDocumentLog::class);
+    }
+
+    /**
+     * Compatibilidad con vistas que leen eDocument->hash.
+     */
+    public function getHashAttribute(): ?string
+    {
+        return $this->document?->hash;
     }
 }
